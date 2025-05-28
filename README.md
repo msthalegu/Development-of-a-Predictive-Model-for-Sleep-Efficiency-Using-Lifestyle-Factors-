@@ -35,7 +35,10 @@ By identifying the factors that influence sleep efficiency, we can provide evide
 # METHODOLOGY  
 
 ## Data 
-The dataset was obtained from Kaggle which is free to use for project purposes. The dataset contains various factors affecting the sleep efficiency listed in different columns. See Table 1 in the Appendix for a sample of the dataset.
+The dataset was obtained from Kaggle which is free to use for project purposes. The dataset contains various factors affecting the sleep efficiency listed in different columns. See Table 1 for a sample of the dataset.
+
+![image](https://github.com/user-attachments/assets/8e863699-71fa-41d1-87fe-b67e8618a32d)
+
 - Age: The participant’s age. Sleep habits and quality might change as a person gets older.
 - Gender: A person’s gender. We will investigate if different genders have different patterns in sleep efficiency.
 - Bedtime: The time at which a person goes to bed. It is a key part of the body’s natural circadian rhythm.
@@ -64,3 +67,83 @@ We used R to investigate various assumptions for the multilinear regression mode
 - Step 7. Model assumptions were evaluated : Linearity was assessed via a residuals plot. Independence of errors, was determined to not fully apply in this context given the data is not time series. Equal variance (Homoscedasticity) was assessed through the Breusch Pagan (BP) test. Normality of residuals was evaluated through the Shapiro-Wilk test and Q-Q plots. Finally, outliers were investigated using a residual vs leverage plot.
 
 The process is illustrated in the following schema, which is mainly divided between Non Iterative and Iterative components. Blue sections represent one-time steps, while orange sections represent tasks or steps that were repeated multiple times to optimize the model performance for the dataset analysed in this project.
+
+![image](https://github.com/user-attachments/assets/a625f9a1-2d32-4e74-bfcf-82b6307e833d)
+
+The test or techniques applied during this project are presented in the following summary table 2:
+![image](https://github.com/user-attachments/assets/54fa3a39-0742-4104-9aef-3c8a272af5b7)
+![image](https://github.com/user-attachments/assets/c2824f19-f2f3-4b28-bb68-506a563bf87a)
+
+All the tests and different statistical techniques applied were run at a significance level of 0.05.
+
+# Results
+Overall, our results indicate that we were able to create a multiple linear regression model to predict sleep efficiency with a variety of significant predictors from the dataset. First, when investigating the multicollinearity assumption, we discovered that our predictors included a set of three variables that had multicollinearity with each other and had to exclude the least significant of the three from our initial additive model. When assessing the linearity of the initial additive model, we discovered that interaction and higher-order terms were required (fig.2). 
+
+![image](https://github.com/user-attachments/assets/04750f78-498e-4dfd-83bf-26db26cf2283)
+
+In our initial additive model we noted that of the seven selected predictors, deep sleep percentage was most significant with a p-value less than 2^10-16  and exercise frequency was least significant with a p-value of 0.02267. To obtain an interaction model that would improve our linearity and adjusted R2 values, we used a stepwise procedure to include significant interaction terms. We discovered that smoking status, age, and awakenings all interact with deep sleep percentage, while awakenings also interact with REM sleep percentage. These interaction effects only slightly improved the linearity of the model (fig. 3), suggesting that the model requires higher-order terms to meet the assumption.
+
+![image](https://github.com/user-attachments/assets/a1e2ffc1-b75f-41a4-accb-aca27ab614ab)
+
+We tested a variety of higher-order models that included higher-order terms for deep sleep percentage, awakenings, and age. The linearity assumption for our model was improved in all cases where we added higher-order predictors, the results of one of which can be found in the (fig. 4). 
+
+![image](https://github.com/user-attachments/assets/68541f12-89d6-42c5-a9d0-bc1ae40c6772)
+
+
+The process of removing a predictor to avoid multicollinearity and creating a higher-order model to improve linearity was an expected part of reaching our final model. With a baseline set of higher-order models established, we proceeded with investigating the other assumptions. While investigating outliers, we found that although no points had a large Cook’s distance, the leverage of some points in what ended up being our final selected model (fig. 5) were more pronounced than the leverage for any points in our other investigated models (fig. 6). 
+
+![image](https://github.com/user-attachments/assets/657ff406-d170-4320-aa36-aa9528627b9b)
+
+![image](https://github.com/user-attachments/assets/9efcfff1-b93d-4fb4-bc20-66af9ac516f7)
+
+
+
+This result was slightly surprising, but could likely be explained by the presence of higher-order terms with larger exponents, which could exponentially inflate the leverage of predicted points having large values for those specific higher-order terms. For the independence assumption, we know that since each row in the data is associated with a unique test subject and are not related to each other in a time-series, we can safely assume that the measurements are independent. If we suspected the measurements might not be independent, we could plot error terms in the order in which they occurred in the dataset and try to observe any pattern in the plot. 
+
+![image](https://github.com/user-attachments/assets/9ad9d0c4-7613-472c-9a7f-e64961d9161d)
+
+
+The equal variance assumption was investigated using residual plots (fig. 7) and scale-location plots (fig. 8), accompanied by Breusch-Pagan tests to determine if the models had homoscedasticity or heteroscedasticity. The null hypothesis of the Breush-Pagan test is that the model has homoscedasticity (which is what we desire for the model) and the alternate hypothesis is that the model has heteroscedasticity (undesired). 
+One of our unused models had a p-value of 0.03796, meaning we rejected the null hypothesis and concluded the model had heteroscedasticity. However, the model we ultimately selected as our final model had a p-value of 0.2247, meaning we fail to reject the null hypothesis and conclude the model has homoscedasticity. Finally, when investigating the normality assumption, we discovered that despite our other assumptions being met and the model not having any clear outliers, the residuals were not normally distributed. 
+
+![image](https://github.com/user-attachments/assets/4bbd6af3-d0fb-44b7-9758-0ea021629d99)
+
+Our Q-Q-plot (fig. 9) had a distinct bow shape and only followed the ideal diagonal line with the middle few results, suggesting that the error terms were not normally distributed. We confirmed this with a Shapiro-Wilk normality test which returned a p-value of 2.285^10-5, meaning we reject the null hypothesis that the residuals are normally distributed, and accept the alternate hypothesis that the residuals are not normally distributed. Although we were not able to verify all the assumptions for our selected model, we were able to solve the problems that arose with all the assumptions except for normality. Our best model that had all significant predictors, a relatively high adjusted R-squared value, and met the most assumptions can be written as:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
