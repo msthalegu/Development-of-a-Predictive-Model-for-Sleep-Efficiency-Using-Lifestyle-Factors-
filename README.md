@@ -81,18 +81,21 @@ Overall, our results indicate that we were able to create a multiple linear regr
 
 *Fig 2. Initial linearity of the additive model*
 ![image](https://github.com/user-attachments/assets/8d0fab01-c7e0-4c43-86ab-49e8963d9609)
+
 Source: Author's own work
 
 In our initial additive model we noted that of the seven selected predictors, deep sleep percentage was most significant with a p-value less than 2^10-16  and exercise frequency was least significant with a p-value of 0.02267. To obtain an interaction model that would improve our linearity and adjusted R2 values, we used a stepwise procedure to include significant interaction terms. We discovered that smoking status, age, and awakenings all interact with deep sleep percentage, while awakenings also interact with REM sleep percentage. These interaction effects only slightly improved the linearity of the model (fig. 3), suggesting that the model requires higher-order terms to meet the assumption.
 
 *Fig 3. Linearity of the interaction model*
 ![image](https://github.com/user-attachments/assets/278df1be-4b50-4546-9504-2333aeb058b1)
+
 Source: Author's own work
 
 We tested a variety of higher-order models that included higher-order terms for deep sleep percentage, awakenings, and age. The linearity assumption for our model was improved in all cases where we added higher-order predictors, the results of one of which can be found in the (fig. 4). 
 
 Fig 4. Linearity of one higher-order model
 ![image](https://github.com/user-attachments/assets/a081d9bb-8617-4eb7-991d-a49d8764ba3f)
+
 Source: Author's own work
 
 
@@ -100,20 +103,24 @@ The process of removing a predictor to avoid multicollinearity and creating a hi
 
 *Fig 5. Cook’s distance/leverage of our selected higher-order model*
 ![image](https://github.com/user-attachments/assets/1dbf968c-359d-4d28-b4ee-691eb732ccd0)
+
 Source: Author's own work
 
 *Fig 6. Cook’s distance/leverage of one of our unused higher-order models*
 ![image](https://github.com/user-attachments/assets/584ec52e-ed4f-47ae-b508-ad2ca0f3f309)
+
 Source: Author's own work
 
 This result was slightly surprising, but could likely be explained by the presence of higher-order terms with larger exponents, which could exponentially inflate the leverage of predicted points having large values for those specific higher-order terms. For the independence assumption, we know that since each row in the data is associated with a unique test subject and are not related to each other in a time-series, we can safely assume that the measurements are independent. If we suspected the measurements might not be independent, we could plot error terms in the order in which they occurred in the dataset and try to observe any pattern in the plot. 
 
 *Fig 7. Residual plot to investigate equal variance*
 ![image](https://github.com/user-attachments/assets/577770e3-6bd3-47e2-87f3-8d1e42f0a82d)
+
 Source: Author's own work
 
 *Fig 8. Scale-location plot to investigate equal variance*
 ![image](https://github.com/user-attachments/assets/a8958b12-cccd-4a86-ac93-e1f0065aa300)
+
 Source: Author's own work
 
 The equal variance assumption was investigated using residual plots (fig. 7) and scale-location plots (fig. 8), accompanied by Breusch-Pagan tests to determine if the models had homoscedasticity or heteroscedasticity. The null hypothesis of the Breush-Pagan test is that the model has homoscedasticity (which is what we desire for the model) and the alternate hypothesis is that the model has heteroscedasticity (undesired). 
@@ -121,6 +128,7 @@ One of our unused models had a p-value of 0.03796, meaning we rejected the null 
 
 *Fig 9. Q-Q-Plot for normality of residuals*
 ![image](https://github.com/user-attachments/assets/dfbd7f2b-516b-464b-adfe-82341dda361f)
+
 Source: Author's own work
 
 Our Q-Q-plot (fig. 9) had a distinct bow shape and only followed the ideal diagonal line with the middle few results, suggesting that the error terms were not normally distributed. We confirmed this with a Shapiro-Wilk normality test which returned a p-value of 2.285^10-5, meaning we reject the null hypothesis that the residuals are normally distributed, and accept the alternate hypothesis that the residuals are not normally distributed. Although we were not able to verify all the assumptions for our selected model, we were able to solve the problems that arose with all the assumptions except for normality. Our best model that had all significant predictors, a relatively high adjusted R-squared value, and met the most assumptions can be written as:
