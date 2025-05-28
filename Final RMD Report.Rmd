@@ -1,0 +1,503 @@
+---
+title: "Sleep Efficiency - DATA 603 Project"
+author:
+- Ali Afkhami (30271805)
+- Daniela Mañozca Cruz (30262558)
+- Evan Losier (30022571)
+- Luisa Alejandra Sierra Guerra (30261956)
+- Ruby Nouri Kermani (30261323)
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+geometry: margin=1in 
+fontsize: 11pt
+---
+
+
+## Libraries and Packages
+
+```{r}
+suppressWarnings({
+  library(lubridate)
+  library(mctest)
+  library(olsrr)
+  library(ggplot2)
+  library(lmtest)
+})
+
+```
+
+
+
+## Uploading the data set
+
+Read the data set:
+
+
+```{r}
+sleep_data <- read.csv("Sleep_Efficiency.csv")
+head(sleep_data)
+```
+```{r}
+sleep_data$Age
+
+```
+
+
+Data set info:
+
+```{r}
+str(sleep_data)
+```
+
+## Data Cleaning
+
+Removing extra space
+
+```{r}
+sleep_data$Bedtime = trimws(sleep_data$Bedtime)
+sleep_data$Wakeup.time = trimws(sleep_data$Wakeup.time)
+```
+
+Filling the "NA" values with "0"
+
+```{r}
+sleep_data[is.na(sleep_data)] = 0
+```
+
+## Data Transformation
+
+
+Converting values from 'Bedtime' and 'Wakeup.time' columns from "chr" format to datetime.
+
+Meaning, we would like to see the values in the format of YEAR-MONTH-DAY and millitary time.
+
+```{r}
+sleep_data$Bedtime = mdy_hms(sleep_data$Bedtime, tz="UTC")
+sleep_data$Wakeup.time = mdy_hms(sleep_data$Wakeup.time, tz="UTC")
+```
+
+Now, we check the values format for 'Bedtime' and 'Wakeup.time' columns
+
+```{r}
+str(sleep_data)
+```
+
+```{r}
+head(sleep_data)
+```
+
+Next, we will extract 'hour:minute' values from the 'Bedtime' and 'Wakeup.time' columns and save them on new columns name 'Bedtime_hour' and 'Wakeup.time_hour'.
+
+```{r}
+sleep_data$Bedtime_hour = format(sleep_data$Bedtime, format = "%H:%M")
+sleep_data$Wakeup.time_hour = format(sleep_data$Wakeup.time, format = "%H:%M")
+```
+
+```{r}
+head(sleep_data)
+```
+
+We believe that the Bedtime and Wake-up time are efficient on the sleep. But since our data was in hour and minutes format, we wanted to change it so that we're able to work on the data and make a linear model out of it. 
+
+
+Therefore, we will make new columns named 'Bedtime_shifted' and 'Wakeuptime_shifted' to calculate the time difference between the person that went to bed and the reference point.
+
+The reference point is 1 hour before the earliest person that went to bed. Meaning that if the earliest person that went to bed was at 6 pm, their time shifted will be **1**, and the second person that went to bed is at 9 pm will be **4**.
+
+Corresponding value for the shifted bedtime column will be **1**. 
+
+
+```{r}
+# Extract hour and minute from bedtime
+sleep_data$Bedtime_hour = hour(sleep_data$Bedtime) + (minute(sleep_data$Bedtime) / 60)
+
+# Extract hour and minute from wakeup time
+sleep_data$Wakeup.time_hour = hour(sleep_data$Wakeup.time) + (minute(sleep_data$Wakeup.time) / 60)
+```
+
+
+```{r}
+# Ensure Bedtime_hour and wakeup.time_hour are numeric
+sleep_data$Bedtime_hour = as.numeric(sleep_data$Bedtime_hour)
+sleep_data$Wakeup.time_hour = as.numeric(sleep_data$Wakeup.time_hour)
+
+# Adjust bedtimes: Add 24 hours if bedtime is after midnight (before noon)
+sleep_data$Bedtime_adj = ifelse(sleep_data$Bedtime_hour < 12, 
+                                 sleep_data$Bedtime_hour + 24, 
+                                 sleep_data$Bedtime_hour)
+
+# Doing the same for the wakeup.time_hour
+sleep_data$wakeup.time_adj = ifelse(sleep_data$Wakeup.time_hour < 12, 
+                                 sleep_data$Wakeup.time_hour + 24, 
+                                 sleep_data$Wakeup.time_hour)
+
+
+# Find the new earliest bedtime and set the reference
+earliest_bedtime = min(sleep_data$Bedtime_adj, na.rm = TRUE)
+# 1 hour before the earliest bedtime
+reference_time = earliest_bedtime - 1
+
+# Compute shifted bedtime
+# (reference time of the wake up time will be the same as the bedtime)
+sleep_data$Bedtime_shifted = sleep_data$Bedtime_adj - reference_time
+sleep_data$Wakeuptime_shifted = sleep_data$wakeup.time_adj - reference_time
+```
+
+
+```{r}
+# Drop the columns "Bedtime_hour","Wakeup.time_hour", "Bedtime_adj" and "wakeup.time_adj"
+
+drop = c("Bedtime_hour","Wakeup.time_hour","Bedtime_adj","wakeup.time_adj")
+
+sleep_data = sleep_data[,!(names(sleep_data) %in% drop)]
+```
+
+
+```{r}
+head(sleep_data)
+```
+
+## Full Additive Model
+
+```{r}
+full_model = lm(Sleep.efficiency ~ Age + factor(Gender) + Sleep.duration + REM.sleep.percentage + Deep.sleep.percentage + Light.sleep.percentage + Awakenings + Caffeine.consumption + Alcohol.consumption + factor(Smoking.status) + Exercise.frequency + Bedtime_shifted + Wakeuptime_shifted, data = sleep_data)
+
+summary(full_model)
+```
+$$
+\begin{aligned}
+\text{Sleep Efficiency} &= \beta_0 + \beta_1 \cdot \text{Age} + \beta_2 \cdot \text{Factor(Gender)} + \beta_3 \cdot \text{Sleep Duration} +  \beta_4 \cdot \text{REM Sleep Percentage}  \\
+&+ \beta_5 \cdot \text{Deep Sleep Percentage} + \beta_6 \cdot \text{Light Sleep Percentage} + \beta_7 \cdot \text{Awakenings}+ \beta_{10} \cdot \text{Factor(Smoking Status)}  \\
+&+ \beta_8 \cdot \text{Caffeine Consumption} + \beta_9 \cdot \text{Alcohol Consumption} + \beta_{11} \cdot \text{Exercise Frequency} \\
+&+  \beta_{12} \cdot \text{Bedtime Shifted}+ \beta_{13} \cdot \text{Wake-up Time Shifted} + \epsilon \\
+&
+\end{aligned}
+$$
+
+
+$$
+\begin{aligned}
+H_0&:\beta_i=0\\
+H_a&:\beta_i\neq0\mbox{    (i=1,2,...,p)}\\\\\\
+\end{aligned}
+$$
+With a t-test for each variable, we can observe that for several of them, the p-value is greater than 0.05, meaning we fail to reject the null hypothesis, and therefore, they are not significant. However, before proceeding to remove these variables, we need to check for multicollinearity, as this could be the cause of one or more variables not being significant.
+
+
+## Checking the Assumption No. 1 - Linearity
+
+```{r}
+ggplot(full_model, aes(x=.fitted, y=.resid)) +
+geom_point() +geom_smooth()+
+geom_hline(yintercept = 0)
+```
+
+
+## Checking the Assumption No. 2 - Multicollinearity
+
+
+```{r}
+pairs(~Sleep.efficiency + REM.sleep.percentage + Light.sleep.percentage + Deep.sleep.percentage, data = sleep_data)
+```
+
+```{r}
+imcdiag(full_model, method="VIF")
+```
+
+We checked their variance inflation factor (VIF) and saw a correlation between 'REM.sleep.percentage' and 'Deep.sleep.percentage' and 'Light.sleep.percentage'. 
+
+
+Therefore, we tried to check all possible models that didn't have a correlation between the predictors and they were significant. 
+
+We checked models that had 'Deep.sleep.percentage' & 'REM.sleep.percentage' and a model with 'REM.sleep.percentage' & 'Light.sleep.percentage' and a model with 'Deep.sleep.percentage' & 'Light.sleep.percentage'. 
+
+```{r}
+full_model_rem_deep = lm(Sleep.efficiency ~ Age + factor(Gender) + Sleep.duration + REM.sleep.percentage+ Deep.sleep.percentage + Awakenings + Caffeine.consumption + Alcohol.consumption + factor(Smoking.status) + Exercise.frequency + Bedtime_shifted + Wakeuptime_shifted, data = sleep_data)
+
+imcdiag(full_model_rem_deep, method="VIF")
+summary(full_model_rem_deep)
+```
+
+
+All models have the same adjusted R-squared and RSE.
+
+But, based on our results, the model with 'REM.sleep.percentage' and 'Deep.sleep.percentage' had no correlation between the predictors and both predictors were significant. 
+
+Therefore, we choose the model with 'REM.sleep.percentage' and 'Deep.sleep.percentage'. 
+
+## Model Selection with Step-wise procedure
+
+```{r}
+full_model_rem_deep = lm(Sleep.efficiency ~ Age + Gender + Sleep.duration + REM.sleep.percentage+ Deep.sleep.percentage + Awakenings + Caffeine.consumption + Alcohol.consumption + Smoking.status + Exercise.frequency + Bedtime_shifted + Wakeuptime_shifted, data = sleep_data)
+
+full_model_rem_deep_wise = ols_step_both_p(full_model_rem_deep,p_enter = 0.05, p_remove = 0.3, details=FALSE)
+
+summary(full_model_rem_deep_wise$model)
+```
+
+```{r}
+summary(full_model_rem_deep_wise$model)
+```
+
+
+
+With this step wise procedure, the additive regression model is:
+
+
+$$
+\begin{aligned}
+\widehat{Sleep.efficiency} &= 0.3526447 + 0.0057675 {X_{Deep.sleep.percentage}}  + 0.0072077 {X_{REM.sleep.percentage}} \\
+&\quad - 0.0413003 {X_{Smoking.status(YES)}}  + 0.0007721 {X_{Age}} - 0.0319148 {X_{Awakenings}} \\
+&\quad - 0.0059629 {X_{Alcohol.consumption}} + 0.0047631 {X_{Exercise.frequency}}
+\end{aligned}
+$$
+
+
+
+We also checked with the All Possible-Regression selection procedure.
+
+(The following code will take minimum of 2 minutes to run, once you run it you don't need to run it again)
+
+```{r}
+full_model_rem_deep = lm(formula = Sleep.efficiency ~ Age + (Gender) + Sleep.duration + 
+    REM.sleep.percentage + Deep.sleep.percentage + Awakenings + 
+    Caffeine.consumption + Alcohol.consumption + (Smoking.status) + 
+    Exercise.frequency + Bedtime_shifted + Wakeuptime_shifted, 
+    data = sleep_data)
+ExecSubsets=ols_step_best_subset(full_model_rem_deep, details=TRUE)
+```
+
+```{r}
+ExecSubsets
+```
+
+
+Based on the output, the best model is with a high adjusted R-squared which is the model with 7 and 8 predictors with a $R^{2}_{adj} = 0.7976$.
+
+Also, the best model with a lowest AIC is the model with a $AIC = -1238.0046$ which has 7 predictors.
+
+Therefore, we will use the model with 7 predictors:
+
+* Age 
+* REM.sleep.percentage 
+* Deep.sleep.percentage 
+* Awakenings 
+* Alcohol.consumption 
+* Smoking.status 
+* Exercise.frequency
+
+```{r}
+fulladditivemodel = lm(Sleep.efficiency ~ Age + REM.sleep.percentage + Deep.sleep.percentage + Awakenings + Alcohol.consumption + factor(Smoking.status) + Exercise.frequency, data=sleep_data)
+
+summary(fulladditivemodel)
+```
+
+$$
+\begin{aligned}
+\widehat{Sleep.efficiency} &= 0.3526447 + 0.0057675 {X_{Deep.sleep.percentage}}  + 0.0072077 {X_{REM.sleep.percentage}} \\
+&\quad - 0.0413003 {X_{Smoking.status(YES)}}  + 0.0007721 {X_{Age}} - 0.0319148 {X_{Awakenings}} \\
+&\quad - 0.0059629 {X_{Alcohol.consumption}} + 0.0047631 {X_{Exercise.frequency}}
+\end{aligned}
+$$
+
+## Interaction models
+
+```{r}
+full_interaction_model = lm(Sleep.efficiency ~ (Age + REM.sleep.percentage + Deep.sleep.percentage + Awakenings + Alcohol.consumption + Smoking.status + Exercise.frequency)^2, data=sleep_data)
+
+summary(full_interaction_model)
+```
+
+
+Using a step-wise procedure to find the significant interactions in the model.
+
+```{r}
+interaction_step = ols_step_both_p(full_interaction_model, p_enter=0.05, p_remove=0.1, details=FALSE)
+summary(interaction_step$model)
+```
+cat("$$\begin{aligned}
+\widehat{Sleep.efficiency} &= 0.1513  + 0.00274 {X_{Age}} + 0.05622 {X_{Awakenings}} + 0.00653 {X_{Exercise.frequency}} - 0.1448 {X_{Smoking.statusYes}}\\
+&\quad - 0.005624 {X_{Alcohol.consumption}} + 0.008218 {X_{Deep.sleep.percentage}} \\
+&\quad + 0.002023 {X_{Smoking.statusYes} \times X_{Deep.sleep.percentage}}\\
+&\quad - 0.0008188 {X_{Awakenings} \times X_{Deep.sleep.percentage}} \\
+&\quad - 0.00004226 {X_{Age} \times X_{Deep.sleep.percentage}} \\
+&\quad - 0.001915 {X_{REM.sleep.percentage} \times X_{Awakenings}}
+\end{aligned}$$")
+
+
+
+
+cat("$$\begin{aligned}
+\widehat{Sleep.efficiency} &= 0.1513 + 0.01047 {X_{REM.sleep.percentage}} + 0.00274 {X_{Age}} + 0.05622 {X_{Awakenings}} + 0.00653 {X_{Exercise.frequency}} - 0.1448 {X_{Smoking.statusYes}}\\
+&\quad - 0.005624 {X_{Alcohol.consumption}} + 0.008218 {X_{Deep.sleep.percentage}} + 0.002023 {X_{Smoking.statusYes} \times X_{Deep.sleep.percentage}}\\
+&\quad - 0.0008188 {X_{Awakenings} \times X_{Deep.sleep.percentage}} \\
+&\quad - 0.00004226 {X_{Age} \times X_{Deep.sleep.percentage}} \\
+&\quad - 0.001915 {X_{REM.sleep.percentage} \times X_{Awakenings}}
+\end{aligned}$$")
+
+
+Therefore, we will include these interaction:
+
+* Smoking.status * Deep.sleep.percentage
+* Awakenings * Deep.sleep.percentage
+* Age * Deep.sleep.percentage
+* REM.sleep.percentage * Awakenings
+
+```{r}
+fullInteractive= lm(Sleep.efficiency ~ Age + REM.sleep.percentage + Deep.sleep.percentage + Awakenings + Alcohol.consumption + factor(Smoking.status) + Exercise.frequency + (Smoking.status * Deep.sleep.percentage) + (Awakenings * Deep.sleep.percentage) + ( Age * Deep.sleep.percentage) + (REM.sleep.percentage * Awakenings), data=sleep_data)
+summary(fullInteractive)
+
+
+```
+```{r}
+ggplot(interaction_step$model, aes(x=.fitted, y=.resid)) +
+geom_point() +geom_smooth()+
+geom_hline(yintercept = 0)
+```
+
+
+
+
+```{r}
+interactionmodel = lm(Sleep.efficiency ~ REM.sleep.percentage + Age + Awakenings + Exercise.frequency + factor(Smoking.status) + Alcohol.consumption + Deep.sleep.percentage + factor(Smoking.status)*Deep.sleep.percentage + Awakenings*Deep.sleep.percentage + Age*Deep.sleep.percentage + REM.sleep.percentage*Awakenings, data = sleep_data)
+
+ggplot(interactionmodel, aes(x=.fitted, y=.resid)) +
+geom_point() +
+geom_smooth() +
+geom_hline(yintercept=0)
+```
+
+There doesn't seem to be any obvious pattern in the residuals plot, but the data does seem to have a curve for both low and high fitted values. We will check a pairs plot in case certain predictors seem to have higher-order relations.
+```{r}
+Age$Sleep_data
+```
+
+```{r}
+library(GGally)
+
+CreditImportant = data.frame(sleep_data$Sleep.efficiency, sleep_data$Age, sleep_data$Awakenings)
+
+
+ggpairs(CreditImportant,lower = list(continuous = "smooth_loess", combo = "facethist", discrete = "facetbar", na = "na"))
+
+
+```
+
+
+```{r}
+library(GGally)
+
+CreditImportant = data.frame(sleep_data$Sleep.efficiency,sleep_data$REM.sleep.percentage, sleep_data$Deep.sleep.percentage)
+
+
+ggpairs(CreditImportant,lower = list(continuous = "smooth_loess", combo = "facethist", discrete = "facetbar", na = "na"))
+
+
+```
+
+
+```{r}
+CreditImportant = data.frame(sleep_data$Awakenings, sleep_data$Alcohol.consumption, sleep_data$factor(Smoking.status),sleep_data$Exercise.frequency)
+
+
+ggpairs(CreditImportant,lower = list(continuous = "smooth_loess", combo = "facethist", discrete = "facetbar", na = "na"))
+```
+
+```{r}
+pairs(~Sleep.efficiency + Age + REM.sleep.percentage + Deep.sleep.percentage, data=sleep_data)
+
+pairs(~Sleep.efficiency + Awakenings + Alcohol.consumption + factor(Smoking.status) + Exercise.frequency, data=sleep_data)
+```
+
+
+## Checking the Assumption No. 3 - Outliers
+
+
+
+## High-order model
+
+Since we did not wanted to over fit our model, we choose (either Ruby or Evan's model)
+
+Evan's higher order model:
+
+```{r}
+evanmodel = lm(Sleep.efficiency ~ REM.sleep.percentage + Age + Awakenings + Exercise.frequency + Smoking.status + Alcohol.consumption + Deep.sleep.percentage + Smoking.status*Deep.sleep.percentage + Awakenings*Deep.sleep.percentage + Age*Deep.sleep.percentage + REM.sleep.percentage*Awakenings + I(Deep.sleep.percentage^2) + I(Deep.sleep.percentage^3) + I(Awakenings^2) + I(Awakenings^3) + I(Awakenings^4), data=sleep_data)
+
+summary(evanmodel)
+bptest(evanmodel)
+shapiro.test(residuals(evanmodel))
+```
+```{r}
+ggplot(evanmodel, aes(x=.fitted, y=.resid)) +
+geom_point() +
+geom_smooth() +
+geom_hline(yintercept=0)
+```
+
+
+```{r}
+ggplot(rubymodel, aes(x=.fitted, y=.resid)) +
+geom_point() +
+geom_smooth() +
+geom_hline(yintercept=0)
+```
+
+
+Ruby's higher order model:
+
+```{r}
+rubymodel = lm(Sleep.efficiency ~ REM.sleep.percentage + Age + Awakenings + Exercise.frequency + Smoking.status + Alcohol.consumption + Deep.sleep.percentage + Smoking.status*Deep.sleep.percentage + Awakenings*Deep.sleep.percentage + Age*Deep.sleep.percentage + REM.sleep.percentage*Awakenings + I(Awakenings^2) + I(Awakenings^3) + I(Awakenings^4) + I(Deep.sleep.percentage^2) + I(Deep.sleep.percentage^3) + I(Age^2), data = sleep_data)
+
+summary(rubymodel)
+bptest(rubymodel)
+shapiro.test(residuals(rubymodel))
+```
+
+## Checking the Assumption No. 4 - Independence 
+
+The dataset used did not contain geographical information or data collected across different time periods. Therefore, the dataset is independent, meaning its results are not influenced by temporal or spatial factors (location).
+
+
+## Checking the Assumption No. 5 - Equal Variance 
+
+
+```{r}
+ggplot(evanmodel, aes(x=.fitted, y=sqrt(abs(.stdresid)))) +
+  geom_point(colour = "purple") +
+  geom_hline(yintercept = 0) +
+  geom_smooth( colour = "green4")+
+   ggtitle("Scale-Loc. plot : Standardized Residual vs Fitted values (high_order_model_Ev)")
+
+ggplot(rubymodel, aes(x=.fitted, y=sqrt(abs(.stdresid)))) +
+  geom_point(colour = "purple") +
+  geom_hline(yintercept = 0) +
+  geom_smooth( colour = "green4")+
+   ggtitle("Scale-Loc. plot : Standardized Residual vs Fitted values (high_order_model_Ruby)")
+
+```
+
+
+
+## Checking the Assumption 6. Normality
+
+
+```{r}
+ggplot(sleep_data, aes(sample=evanmodel$residuals)) +
+stat_qq() +
+stat_qq_line()+labs(title="Evan")
+
+ggplot(sleep_data, aes(sample=rubymodel$residuals)) +
+stat_qq() +
+stat_qq_line()+labs(title="high order model Ruby")
+
+```
+
+By looking at both plots (Evans and Rubys):
+
+According to the stat-QQ line plot, there is no any significant "bow shaped pattern or kurtosis" of the diagonal points, indicating that the data are normally distributed.
+
+
+
